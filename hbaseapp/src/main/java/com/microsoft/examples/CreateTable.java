@@ -1,15 +1,17 @@
 package com.microsoft.examples;
- import java.io.IOException;
 
- import org.apache.hadoop.conf.Configuration;
- import org.apache.hadoop.hbase.HBaseConfiguration;
- import org.apache.hadoop.hbase.client.HBaseAdmin;
- import org.apache.hadoop.hbase.HTableDescriptor;
- import org.apache.hadoop.hbase.TableName;
- import org.apache.hadoop.hbase.HColumnDescriptor;
- import org.apache.hadoop.hbase.client.HTable;
- import org.apache.hadoop.hbase.client.Put;
- import org.apache.hadoop.hbase.util.Bytes;
+import java.io.IOException;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.util.Bytes;
 
  public class CreateTable {
      public static void main(String[] args) throws IOException {
@@ -28,9 +30,11 @@ package com.microsoft.examples;
 
      //Linux-based HDInsight clusters use /hbase-unsecure as the znode parent
      config.set("zookeeper.znode.parent","/hbase-unsecure");
+     Connection connection = ConnectionFactory.createConnection(config);
 
      // create an admin object using the config
-     HBaseAdmin admin = new HBaseAdmin(config);
+     //HBaseAdmin admin = new HBaseAdmin(config); //deprecated
+     Admin admin = connection.getAdmin();
 
      // create the table...
      HTableDescriptor tableDescriptor = new HTableDescriptor(TableName.valueOf("people"));
@@ -48,20 +52,21 @@ package com.microsoft.examples;
          { "5", "Rosalie", "burton", "rosalie@fabrikam.com"},
          { "6", "Gabriela", "Ingram", "gabriela@contoso.com"} };
 
-     HTable table = new HTable(config, "people");
+     //HTable table = new HTable(config, "people"); //deprecated
+     Table table = connection.getTable(TableName.valueOf("people"));
 
      // Add each person to the table
      //   Use the `name` column family for the name
      //   Use the `contactinfo` column family for the email
      for (int i = 0; i< people.length; i++) {
-         Put person = new Put(Bytes.toBytes(people[i][0]));
-         person.add(Bytes.toBytes("name"), Bytes.toBytes("first"), Bytes.toBytes(people[i][1]));
-         person.add(Bytes.toBytes("name"), Bytes.toBytes("last"), Bytes.toBytes(people[i][2]));
-         person.add(Bytes.toBytes("contactinfo"), Bytes.toBytes("email"), Bytes.toBytes(people[i][3]));
-         table.put(person);
+        String rowKey = people[i][0];
+        Put person = new Put(Bytes.toBytes(rowKey));
+        person.addColumn(Bytes.toBytes("name"), Bytes.toBytes("first"), Bytes.toBytes(people[i][1]));
+        person.addColumn(Bytes.toBytes("name"), Bytes.toBytes("last"), Bytes.toBytes(people[i][2]));
+        person.addColumn(Bytes.toBytes("contactinfo"), Bytes.toBytes("email"), Bytes.toBytes(people[i][3]));
+        table.put(person);
      }
      // flush commits and close the table
-     table.flushCommits();
-     table.close();
+     table.close(); 
      }
  }
